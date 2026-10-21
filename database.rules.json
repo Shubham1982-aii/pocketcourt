@@ -1,0 +1,36 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL')",
+        "participants": {
+          "$role": {
+            ".write": "auth != null"
+          }
+        },
+        "floorSpeaker": {
+          ".write": "auth != null"
+        },
+        "activeObjection": {
+          ".write": "auth != null"
+        },
+        "witnessPass": {
+          ".write": "auth != null"
+        },
+        "crowdVotes": {
+          ".write": "auth != null"
+        },
+        "messages": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL'"
+        },
+        "evidence": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL'"
+        },
+        "verdict": {
+          ".write": "auth != null && (data.child('isFinal').val() != true || newData.child('penaltyFulfilled').exists())"
+        }
+      }
+    }
+  }
+}
