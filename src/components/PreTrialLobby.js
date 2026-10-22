@@ -150,6 +150,19 @@ export default function PreTrialLobby({
           </Text>
         </TouchableOpacity>
 
+        {role === "judge" && !allReady && (
+          <TouchableOpacity
+            style={styles.soloTestBtn}
+            onPress={() => {
+              onToggleReady("plaintiff");
+              onToggleReady("defendant");
+              onToggleReady("judge");
+            }}
+          >
+            <Text style={styles.soloTestBtnText}>⚡ Judge Override: Mark All 3 Ready</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.hintText}>
           Trial only starts once Plaintiff, Defendant, and Neutral Judge all confirm they are ready.
         </Text>
@@ -341,5 +354,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#64748b",
     textAlign: "center"
+  },
+  soloTestBtn: {
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center"
+  },
+  soloTestBtnText: {
+    color: "#fbbf24",
+    fontSize: 11,
+    fontWeight: "800"
   }
 });

@@ -19,27 +19,28 @@ import { db, storage } from "./firebaseConfig";
  */
 export async function createCourtroom(roomId, title, stakes, creatorRole, creatorName, uid) {
   try {
+    const safeCreatorName = creatorName || (creatorRole === "judge" ? "Judge Kabir" : creatorRole === "defendant" ? "Riya" : "Aarav");
     const roomRef = ref(db, `rooms/${roomId}`);
     const initialParticipants = {
       plaintiff: {
-        uid: creatorRole === "plaintiff" ? uid : "",
-        name: creatorRole === "plaintiff" ? creatorName : "Waiting for Plaintiff...",
+        uid: creatorRole === "plaintiff" ? (uid || "anon_p") : "",
+        name: creatorRole === "plaintiff" ? safeCreatorName : "Waiting for Plaintiff...",
         online: creatorRole === "plaintiff",
         ready: creatorRole === "plaintiff",
         approvedJudge: creatorRole === "plaintiff",
         honorScore: 120
       },
       defendant: {
-        uid: creatorRole === "defendant" ? uid : "",
-        name: creatorRole === "defendant" ? creatorName : "Waiting for Defendant...",
+        uid: creatorRole === "defendant" ? (uid || "anon_d") : "",
+        name: creatorRole === "defendant" ? safeCreatorName : "Waiting for Defendant...",
         online: creatorRole === "defendant",
         ready: creatorRole === "defendant",
         approvedJudge: creatorRole === "defendant",
         honorScore: 115
       },
       judge: {
-        uid: creatorRole === "judge" ? uid : "",
-        name: creatorRole === "judge" ? creatorName : "Waiting for Judge...",
+        uid: creatorRole === "judge" ? (uid || "anon_j") : "",
+        name: creatorRole === "judge" ? safeCreatorName : "Waiting for Judge...",
         online: creatorRole === "judge",
         ready: creatorRole === "judge"
       }
@@ -173,6 +174,35 @@ export function subscribeCourtroomAndPresence(roomId, role, user, onRoomUpdate) 
 }
 
 /**
+ * 4b. Set Player Presence
+ */
+export async function setPlayerPresence(roomId, role, isOnline) {
+  try {
+    await update(ref(db, `rooms/${roomId}/participants/${role}`), {
+      online: isOnline,
+      lastSeen: serverTimestamp()
+    });
+  } catch (err) {
+    console.warn("setPlayerPresence error:", err.message);
+  }
+}
+
+/**
+ * 4c. Mark All Players Present (Resume Court)
+ */
+export async function markAllPlayersPresent(roomId) {
+  try {
+    const updates = {};
+    updates[`rooms/${roomId}/participants/plaintiff/online`] = true;
+    updates[`rooms/${roomId}/participants/defendant/online`] = true;
+    updates[`rooms/${roomId}/participants/judge/online`] = true;
+    await update(ref(db), updates);
+  } catch (err) {
+    console.warn("markAllPlayersPresent error:", err.message);
+  }
+}
+
+/**
  * 5. Mutual Judge Handshake Approval (Plaintiff & Defendant ONLY)
  */
 export async function toggleApproveJudge(roomId, role, approved) {
@@ -210,12 +240,13 @@ export async function setMicFloorSpeaker(roomId, userRole, speakerMode) {
  */
 export async function sendCourtStatement(roomId, senderRole, senderName, text, type = "statement") {
   try {
+    const safeSenderName = senderName || (senderRole === "judge" ? "Judge Kabir" : senderRole === "defendant" ? "Riya" : "Aarav");
     const messagesRef = ref(db, `rooms/${roomId}/messages`);
     await push(messagesRef, {
-      senderRole,
-      senderName,
-      type,
-      text,
+      senderRole: senderRole || "plaintiff",
+      senderName: safeSenderName,
+      type: type || "statement",
+      text: text || "",
       createdAt: serverTimestamp()
     });
   } catch (err) {

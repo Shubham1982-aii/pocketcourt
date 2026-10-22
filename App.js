@@ -27,7 +27,9 @@ import {
   voteCrowdJury,
   sealFinalVerdict,
   markPenaltyFulfilled,
-  toggleApproveJudge
+  toggleApproveJudge,
+  setPlayerPresence,
+  markAllPlayersPresent
 } from "./src/courtroomService";
 
 import PreTrialLobby from "./src/components/PreTrialLobby";
@@ -164,24 +166,54 @@ function CourtroomScreen() {
     !verdict?.isFinal &&
     (isJudge || floorSpeaker === "BOTH" || floorSpeaker === role.toUpperCase());
 
-  const currentSpeakerName = isJudge ? participants?.judge?.name : participants?.[role]?.name || role.toUpperCase();
+  const currentSpeakerName =
+    participants?.[role]?.name ||
+    (role === "judge" ? "Judge Kabir" : role === "defendant" ? "Riya" : role === "plaintiff" ? "Aarav" : "Spectator");
 
   // Handlers
   const handleTogglePresence = (targetRole) => {
     const isCurrentOnline = participants?.[targetRole]?.online;
+    const nextState = !isCurrentOnline;
+    setPlayerPresence(roomId, targetRole, nextState);
+    setRoom((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        participants: {
+          ...prev.participants,
+          [targetRole]: {
+            ...prev.participants?.[targetRole],
+            online: nextState
+          }
+        }
+      };
+    });
     setFallbackState((prev) => ({
       ...prev,
       participants: {
         ...prev.participants,
         [targetRole]: {
           ...prev.participants[targetRole],
-          online: !isCurrentOnline
+          online: nextState
         }
       }
     }));
   };
 
   const handleMarkAllPresent = () => {
+    markAllPlayersPresent(roomId);
+    setRoom((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        participants: {
+          ...prev.participants,
+          plaintiff: { ...prev.participants?.plaintiff, online: true },
+          defendant: { ...prev.participants?.defendant, online: true },
+          judge: { ...prev.participants?.judge, online: true }
+        }
+      };
+    });
     setFallbackState((prev) => ({
       ...prev,
       participants: {
@@ -235,7 +267,7 @@ function CourtroomScreen() {
     }
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         quality: 0.7
       });
 
@@ -519,6 +551,7 @@ function CourtroomScreen() {
 
   const handleCommenceTrial = () => {
     commenceTrialFromLobby(roomId);
+    setRoom((prev) => (prev ? { ...prev, status: "IN_SESSION" } : prev));
     setFallbackState((prev) => ({
       ...prev,
       status: "IN_SESSION"
@@ -529,6 +562,9 @@ function CourtroomScreen() {
   const handleCreateCustomCase = (customTitle, customStakes, pName, dName, jName) => {
     const newCode = String(Math.floor(1000 + Math.random() * 9000));
     setRoomId(newCode);
+    const safePName = pName || "Aarav";
+    const safeDName = dName || "Riya";
+    const safeJName = jName || "Judge Kabir";
     setFallbackState({
       title: `Case #${newCode}: ${customTitle}`,
       stakes: customStakes,
@@ -538,15 +574,15 @@ function CourtroomScreen() {
       activeObjection: null,
       witnessPass: { active: false, name: "", secondsLeft: 0 },
       participants: {
-        plaintiff: { name: pName, online: true, ready: true, approvedJudge: true, honorScore: 120 },
-        defendant: { name: dName, online: true, ready: true, approvedJudge: true, honorScore: 115 },
-        judge: { name: jName, online: true, ready: true }
+        plaintiff: { name: safePName, online: true, ready: true, approvedJudge: true, honorScore: 120 },
+        defendant: { name: safeDName, online: true, ready: true, approvedJudge: true, honorScore: 115 },
+        judge: { name: safeJName, online: true, ready: true }
       },
       messages: [
         {
           id: "m_init",
           senderRole: "judge",
-          senderName: jName,
+          senderName: safeJName,
           type: "system_order",
           text: `Courtroom #${newCode} initialized! Case: "${customTitle}". All participants gather in lobby.`
         }
