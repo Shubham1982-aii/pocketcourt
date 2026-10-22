@@ -1,6 +1,7 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getDatabase } from "firebase/database";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { initializeAuth, getReactNativePersistence, signInAnonymously, getAuth } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Your verified Firebase project configuration
 const firebaseConfig = {
@@ -14,9 +15,19 @@ const firebaseConfig = {
   measurementId: "G-50FWBRZF40"
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const db = getDatabase(app);
-export const auth = getAuth(app);
+
+let authInstance;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (e) {
+  authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
 export const storage = null; // 100% Free: Proof is handled directly via Realtime Database
 
 export async function ensureSignedIn() {
