@@ -25,9 +25,10 @@
       "package": "com.pocketcourt.app",
       "versionCode": 1,
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -41,6 +42,11 @@
           "cameraPermission": "The app needs access to your camera to take photos of receipts or proof."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b543dbdc-9bd5-480a-8bfc-f55432636cb5"
+      }
+    }
   }
 }
