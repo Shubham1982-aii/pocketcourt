@@ -128,21 +128,35 @@ export function subscribeCourtroomAndPresence(roomId, role, user, onRoomUpdate) 
 
     const unsubConnect = onValue(connectedRef, (snap) => {
       if (snap.val() === true) {
-        onDisconnect(participantRef).update({
-          online: false,
-          lastSeen: serverTimestamp()
-        });
+        try {
+          onDisconnect(participantRef).update({
+            online: false,
+            lastSeen: serverTimestamp()
+          });
 
-        update(participantRef, {
-          uid: user?.uid || "anon_" + role,
-          online: true
-        });
+          update(participantRef, {
+            uid: user?.uid || "anon_" + role,
+            online: true
+          });
+        } catch (e) {
+          console.warn("onDisconnect update notice:", e.message);
+        }
       }
     });
 
     const unsubRoom = onValue(roomRef, (snap) => {
       if (snap.exists()) {
         onRoomUpdate(snap.val());
+      } else {
+        // Auto-seed room in Firebase so all participants connect online immediately
+        createCourtroom(
+          roomId,
+          `Case #${roomId}: The Shared Netflix Password`,
+          "Loser pays for next month's subscription + snacks",
+          role,
+          role === "judge" ? "Judge Kabir" : role === "defendant" ? "Riya" : "Aarav",
+          user?.uid || "anon"
+        );
       }
     });
 

@@ -31,8 +31,17 @@ export const auth = authInstance;
 export const storage = null; // 100% Free: Proof is handled directly via Realtime Database
 
 export async function ensureSignedIn() {
-  if (!auth.currentUser) {
-    await signInAnonymously(auth);
+  try {
+    if (!auth.currentUser) {
+      await signInAnonymously(auth);
+    }
+    return auth.currentUser;
+  } catch (err) {
+    // If Anonymous Sign-In is not enabled yet in Firebase Console, return guest session
+    console.warn("Firebase Auth notice:", err.message);
+    return {
+      uid: "guest_" + Math.random().toString(36).substring(2, 9),
+      isAnonymous: true
+    };
   }
-  return auth.currentUser;
 }

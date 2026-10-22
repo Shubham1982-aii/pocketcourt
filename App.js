@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import {
-  SafeAreaView,
   View,
   Alert,
   Share,
-  StyleSheet
+  StyleSheet,
+  Platform,
+  StatusBar as RNStatusBar
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { ensureSignedIn } from "./src/firebaseConfig";
 import {
@@ -39,6 +42,14 @@ import LobbyTab, { PRESET_CASES } from "./src/components/LobbyTab";
 import BottomTabBar from "./src/components/BottomTabBar";
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <CourtroomScreen />
+    </SafeAreaProvider>
+  );
+}
+
+function CourtroomScreen() {
   const [roomId, setRoomId] = useState("4829");
   const [role, setRole] = useState("plaintiff"); // 'plaintiff' | 'defendant' | 'judge' | 'spectator'
   const [activeTab, setActiveTab] = useState("chat");
@@ -553,7 +564,8 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView style={styles.safeContainer} edges={["top", "bottom", "left", "right"]}>
+      <StatusBar style="light" backgroundColor="#0f172a" />
       {/* If in Pre-Trial Gathering Lobby Mode */}
       {isGatheringLobby ? (
         <PreTrialLobby
@@ -685,7 +697,8 @@ export default function App() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#0f172a"
+    backgroundColor: "#0f172a",
+    paddingTop: Platform.OS === "android" ? Math.max(RNStatusBar.currentHeight || 0, 10) : 0
   },
   tabContent: {
     flex: 1,

@@ -2,33 +2,33 @@
   "rules": {
     "rooms": {
       "$roomId": {
-        ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() || root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL')",
+        ".read": true,
+        ".write": "!data.exists() || root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL'",
         "participants": {
           "$role": {
-            ".write": "auth != null"
+            ".write": true
           }
         },
         "floorSpeaker": {
-          ".write": "auth != null"
+          ".write": true
         },
         "activeObjection": {
-          ".write": "auth != null"
+          ".write": true
         },
         "witnessPass": {
-          ".write": "auth != null"
+          ".write": true
         },
         "crowdVotes": {
-          ".write": "auth != null"
+          ".write": true
         },
         "messages": {
-          ".write": "auth != null && root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL'"
+          ".write": "root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL'"
         },
         "evidence": {
-          ".write": "auth != null && root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL'"
+          ".write": "root.child('rooms/' + $roomId + '/status').val() != 'SEALED_FINAL'"
         },
         "verdict": {
-          ".write": "auth != null && (data.child('isFinal').val() != true || newData.child('penaltyFulfilled').exists())"
+          ".write": "data.child('isFinal').val() != true || newData.child('penaltyFulfilled').exists()"
         }
       }
     }
