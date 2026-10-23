@@ -10,6 +10,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
+import * as SplashScreen from "expo-splash-screen";
 import { ensureSignedIn } from "./src/firebaseConfig";
 import { saveCaseLocally, loadCaseLocally, exportCaseDossier } from "./src/localCaseService";
 import {
@@ -46,6 +47,15 @@ import LobbyTab, { PRESET_CASES } from "./src/components/LobbyTab";
 import BottomTabBar from "./src/components/BottomTabBar";
 
 export default function App() {
+  useEffect(() => {
+    // Hide native splash screen immediately when React loads
+    SplashScreen.hideAsync().catch(() => {});
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <SafeAreaProvider>
       <CourtroomScreen />
@@ -93,6 +103,9 @@ function CourtroomScreen() {
   }));
 
   useEffect(() => {
+    // Ensure native splash screen is dismissed
+    SplashScreen.hideAsync().catch(() => {});
+
     // 1. Immediately hydrate case from on-device local storage
     loadCaseLocally(roomId).then((cached) => {
       if (cached) {
