@@ -52,68 +52,42 @@ export default function App() {
 }
 
 function CourtroomScreen() {
-  const [roomId, setRoomId] = useState("4829");
+  const [roomId, setRoomId] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
   const [role, setRole] = useState("plaintiff"); // 'plaintiff' | 'defendant' | 'judge' | 'spectator'
-  const [activeTab, setActiveTab] = useState("chat");
+  const [activeTab, setActiveTab] = useState("lobby"); // Opens cleanly on the Lobby Hub!
   const [room, setRoom] = useState(null);
 
-  const defaultPreset = PRESET_CASES[0];
-  const [fallbackState, setFallbackState] = useState({
-    title: `Case #${roomId}: ${defaultPreset.title}`,
-    stakes: defaultPreset.stakes,
-    status: "IN_SESSION", // 'LOBBY_GATHERING' | 'IN_SESSION' | 'SEALED_FINAL'
+  const [fallbackState, setFallbackState] = useState(() => ({
+    title: "New Everyday Dispute",
+    stakes: "Loser treats winner to coffee/snacks",
+    status: "LOBBY_GATHERING", // Opens cleanly in Pre-Trial Gathering Lobby!
     floorSpeaker: "BOTH",
-    crowdVotes: { plaintiff: 5, defendant: 4 },
+    crowdVotes: { plaintiff: 1, defendant: 1 },
     activeObjection: null,
-    witnessPass: { active: false, name: "Sneha", secondsLeft: 60 },
+    witnessPass: { active: false, name: "", secondsLeft: 0 },
     participants: {
-      plaintiff: { name: defaultPreset.plaintiff, online: true, ready: true, approvedJudge: true, honorScore: 120 },
-      defendant: { name: defaultPreset.defendant, online: true, ready: true, approvedJudge: true, honorScore: 115 },
-      judge: { name: defaultPreset.judge, online: true, ready: true }
+      plaintiff: { name: "Waiting for Plaintiff...", online: true, ready: false, approvedJudge: false, honorScore: 120 },
+      defendant: { name: "Waiting for Defendant...", online: true, ready: false, approvedJudge: false, honorScore: 115 },
+      judge: { name: "Waiting for Judge...", online: true, ready: false }
     },
     messages: [
       {
-        id: "m1",
+        id: "m_init",
         senderRole: "judge",
-        senderName: defaultPreset.judge,
+        senderName: "Court Clerk",
         type: "system_order",
-        text: "Court is now in session. All 3 participants are present. State your opening arguments."
-      },
-      {
-        id: "m2",
-        senderRole: "plaintiff",
-        senderName: defaultPreset.plaintiff,
-        type: "statement",
-        text: "Your Honor, we split the Netflix account 50/50. Last night I was kicked out mid-movie because 4 screens were active!"
-      },
-      {
-        id: "m3",
-        senderRole: "defendant",
-        senderName: defaultPreset.defendant,
-        type: "statement",
-        text: "I only logged in on my phone and TV! How do you know your own brother didn't use your profile?"
+        text: "⚖️ Courtroom docket opened. Claim your role, mark Ready, and commence trial when all 3 parties are assembled."
       }
     ],
-    evidence: [
-      {
-        id: "ex1",
-        code: "Exhibit A",
-        submittedBy: "plaintiff",
-        submitterName: defaultPreset.plaintiff,
-        type: "Screenshot / Chat Log",
-        title: "Device Manager Screenshot",
-        detail: "Shows 3 active streams from Hostel Block B at 9:48 PM during the match.",
-        status: "admitted"
-      }
-    ],
+    evidence: [],
     verdict: {
       isFinal: false,
       winner: "",
-      reasoning: "Based on Exhibit A, unauthorized device logins were established.",
-      penalty: defaultPreset.stakes,
+      reasoning: "",
+      penalty: "Loser pays restitution",
       penaltyFulfilled: false
     }
-  });
+  }));
 
   useEffect(() => {
     let unsubscribe = null;
@@ -169,6 +143,9 @@ function CourtroomScreen() {
   const currentSpeakerName =
     participants?.[role]?.name ||
     (role === "judge" ? "Judge Kabir" : role === "defendant" ? "Riya" : role === "plaintiff" ? "Aarav" : "Spectator");
+
+  const roleThemeColor =
+    role === "plaintiff" ? "#2563eb" : role === "defendant" ? "#dc2626" : role === "judge" ? "#d97706" : "#7c3aed";
 
   // Handlers
   const handleTogglePresence = (targetRole) => {
@@ -623,105 +600,131 @@ function CourtroomScreen() {
         />
       ) : (
         <>
-          {/* 1. Header & 3-Player Presence */}
-          <CourtHeader
-            roomId={roomId}
-            title={activeRoom.title}
-            stakes={activeRoom.stakes}
-            role={role}
-            participants={participants}
-            allPresent={allPresent}
-            onTogglePresence={handleTogglePresence}
-            onToggleApproveJudge={handleToggleApproveJudge}
-          />
-
-          {/* 2. Recess Banner if AFK */}
-          {!allPresent && (
-            <RecessBanner
-              missingPlayerNames={["plaintiff", "defendant", "judge"]
-                .filter((r) => !participants?.[r]?.online)
-                .map((r) => participants?.[r]?.name || r)
-                .join(", ")}
-              onMarkAllPresent={handleMarkAllPresent}
-            />
-          )}
-
-          {/* 3. Objection Banner */}
-          <ObjectionBanner
-            objection={activeRoom.activeObjection}
-            isJudge={role === "judge"}
-            onSustain={() => handleResolveObjection(true)}
-            onOverrule={() => handleResolveObjection(false)}
-          />
-
-          {/* 4. Witness Pass Banner */}
-          <WitnessBanner
-            witnessPass={activeRoom.witnessPass}
-            onDropTestimony={handleDropWitnessTestimony}
-            onDismiss={() => dismissWitnessPass(roomId)}
-          />
-
-          {/* 5. Main Tab Content */}
+          {/* Main Tab Content */}
           <View style={styles.tabContent}>
             {activeTab === "chat" && (
-              <CourtChatTab
-                role={role}
-                messages={messages}
-                floorSpeaker={floorSpeaker}
-                crowdVotes={activeRoom.crowdVotes}
-                canSpeak={canSpeak}
-                allPresent={allPresent}
-                bothApprovedJudge={bothApprovedJudge}
-                isSealed={verdict?.isFinal}
-                currentSpeakerName={currentSpeakerName}
-                onSendMessage={handleSendMessage}
-                onSetFloorSpeaker={(mode) => setMicFloorSpeaker(roomId, role, mode)}
-                onVoteCrowd={handleVoteCrowd}
-                onPickProof={handlePickProof}
-                onRaiseObjection={handleRaiseObjection}
-                onSummonWitness={handleSummonWitness}
-                onJudgeOrder={handleJudgeOrder}
-                onSwitchToVerdict={() => setActiveTab("verdict")}
-                onInspectExhibit={() => setActiveTab("evidence")}
-              />
+              <>
+                {/* 1. Header & 3-Player Presence ONLY in Chat */}
+                <CourtHeader
+                  roomId={roomId}
+                  title={activeRoom.title}
+                  stakes={activeRoom.stakes}
+                  role={role}
+                  participants={participants}
+                  allPresent={allPresent}
+                  onTogglePresence={handleTogglePresence}
+                  onToggleApproveJudge={handleToggleApproveJudge}
+                />
+
+                {/* 2. Recess Banner if AFK */}
+                {!allPresent && (
+                  <RecessBanner
+                    missingPlayerNames={["plaintiff", "defendant", "judge"]
+                      .filter((r) => !participants?.[r]?.online)
+                      .map((r) => participants?.[r]?.name || r)
+                      .join(", ")}
+                    onMarkAllPresent={handleMarkAllPresent}
+                  />
+                )}
+
+                {/* 3. Objection Banner */}
+                <ObjectionBanner
+                  objection={activeRoom.activeObjection}
+                  isJudge={role === "judge"}
+                  onSustain={() => handleResolveObjection(true)}
+                  onOverrule={() => handleResolveObjection(false)}
+                />
+
+                {/* 4. Witness Pass Banner */}
+                <WitnessBanner
+                  witnessPass={activeRoom.witnessPass}
+                  onDropTestimony={handleDropWitnessTestimony}
+                  onDismiss={() => dismissWitnessPass(roomId)}
+                />
+
+                <CourtChatTab
+                  role={role}
+                  messages={messages}
+                  floorSpeaker={floorSpeaker}
+                  crowdVotes={activeRoom.crowdVotes}
+                  canSpeak={canSpeak}
+                  allPresent={allPresent}
+                  bothApprovedJudge={bothApprovedJudge}
+                  isSealed={verdict?.isFinal}
+                  currentSpeakerName={currentSpeakerName}
+                  onSendMessage={handleSendMessage}
+                  onSetFloorSpeaker={(mode) => setMicFloorSpeaker(roomId, role, mode)}
+                  onVoteCrowd={handleVoteCrowd}
+                  onPickProof={handlePickProof}
+                  onRaiseObjection={handleRaiseObjection}
+                  onSummonWitness={handleSummonWitness}
+                  onJudgeOrder={handleJudgeOrder}
+                  onSwitchToVerdict={() => setActiveTab("verdict")}
+                  onInspectExhibit={() => setActiveTab("evidence")}
+                />
+              </>
             )}
 
             {activeTab === "evidence" && (
-              <EvidenceLockerTab
-                evidence={evidence}
-                role={role}
-                onPickProof={handlePickProof}
-                onUpdateEvidenceStatus={handleUpdateEvidenceStatus}
-                onCiteExhibit={handleCiteExhibit}
-                onInspectImage={(uri, title) => Alert.alert(title, uri)}
-              />
+              <>
+                <View style={styles.compactHeaderBar}>
+                  <Text style={styles.compactHeaderTitle}>⚖️ CASE #{roomId}</Text>
+                  <View style={[styles.compactRoleBadge, { borderColor: roleThemeColor }]}>
+                    <Text style={[styles.compactRoleText, { color: roleThemeColor }]}>{role.toUpperCase()}</Text>
+                  </View>
+                </View>
+                <EvidenceLockerTab
+                  evidence={evidence}
+                  role={role}
+                  onPickProof={handlePickProof}
+                  onUpdateEvidenceStatus={handleUpdateEvidenceStatus}
+                  onCiteExhibit={handleCiteExhibit}
+                  onInspectImage={(uri, title) => Alert.alert(title, uri)}
+                />
+              </>
             )}
 
             {activeTab === "verdict" && (
-              <VerdictTab
-                verdict={verdict}
-                role={role}
-                title={activeRoom.title}
-                judgeName={participants?.judge?.name || "Judge"}
-                plaintiffName={participants?.plaintiff?.name || "Plaintiff"}
-                defendantName={participants?.defendant?.name || "Defendant"}
-                onSealVerdict={handleSealVerdict}
-                onMarkPenaltyFulfilled={handleMarkPenaltyFulfilled}
-                onCopyReceipt={handleCopyReceipt}
-              />
+              <>
+                <View style={styles.compactHeaderBar}>
+                  <Text style={styles.compactHeaderTitle}>⚖️ CASE #{roomId}</Text>
+                  <View style={[styles.compactRoleBadge, { borderColor: roleThemeColor }]}>
+                    <Text style={[styles.compactRoleText, { color: roleThemeColor }]}>{role.toUpperCase()}</Text>
+                  </View>
+                </View>
+                <VerdictTab
+                  verdict={verdict}
+                  role={role}
+                  title={activeRoom.title}
+                  judgeName={participants?.judge?.name || "Judge"}
+                  plaintiffName={participants?.plaintiff?.name || "Plaintiff"}
+                  defendantName={participants?.defendant?.name || "Defendant"}
+                  onSealVerdict={handleSealVerdict}
+                  onMarkPenaltyFulfilled={handleMarkPenaltyFulfilled}
+                  onCopyReceipt={handleCopyReceipt}
+                />
+              </>
             )}
 
             {activeTab === "lobby" && (
-              <LobbyTab
-                currentRoomId={roomId}
-                currentRole={role}
-                onJoinRoom={(newId) => {
-                  setRoomId(newId);
-                  setActiveTab("chat");
-                }}
-                onSwitchRole={(newRole) => setRole(newRole)}
-                onCreateCustomCase={handleCreateCustomCase}
-              />
+              <>
+                <View style={styles.compactHeaderBar}>
+                  <Text style={styles.compactHeaderTitle}>⚖️ POCKETCOURT LOBBY</Text>
+                  <View style={[styles.compactRoleBadge, { borderColor: roleThemeColor }]}>
+                    <Text style={[styles.compactRoleText, { color: roleThemeColor }]}>{role.toUpperCase()}</Text>
+                  </View>
+                </View>
+                <LobbyTab
+                  currentRoomId={roomId}
+                  currentRole={role}
+                  onJoinRoom={(newId) => {
+                    setRoomId(newId);
+                    setActiveTab("chat");
+                  }}
+                  onSwitchRole={(newRole) => setRole(newRole)}
+                  onCreateCustomCase={handleCreateCustomCase}
+                />
+              </>
             )}
           </View>
 
@@ -746,5 +749,32 @@ const styles = StyleSheet.create({
   tabContent: {
     flex: 1,
     backgroundColor: "#f8fafc"
+  },
+  compactHeaderBar: {
+    backgroundColor: "#0f172a",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#1e293b"
+  },
+  compactHeaderTitle: {
+    color: "#fbbf24",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.5
+  },
+  compactRoleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 99,
+    borderWidth: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.05)"
+  },
+  compactRoleText: {
+    fontSize: 10,
+    fontWeight: "800"
   }
 });

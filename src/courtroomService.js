@@ -161,13 +161,13 @@ export function subscribeCourtroomAndPresence(roomId, role, user, onRoomUpdate) 
       if (snap.exists()) {
         onRoomUpdate(snap.val());
       } else {
-        // Auto-seed room in Firebase so all participants connect online immediately
+        // Auto-seed fresh room in Firebase so all participants connect online immediately
         createCourtroom(
           roomId,
-          `Case #${roomId}: The Shared Netflix Password`,
-          "Loser pays for next month's subscription + snacks",
+          `Case #${roomId}: Everyday Dispute`,
+          "Loser pays restitution",
           role,
-          role === "judge" ? "Judge Kabir" : role === "defendant" ? "Riya" : "Aarav",
+          role === "judge" ? "Judge" : role === "defendant" ? "Defendant" : "Plaintiff",
           user?.uid || "anon"
         );
       }

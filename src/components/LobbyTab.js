@@ -42,16 +42,16 @@ export default function LobbyTab({
   onSwitchRole,
   onCreateCustomCase
 }) {
-  const [inputRoomId, setInputRoomId] = useState(currentRoomId || "4829");
+  const [inputRoomId, setInputRoomId] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [customStakes, setCustomStakes] = useState("");
-  const [customP, setCustomP] = useState("Aarav");
-  const [customJ, setCustomJ] = useState("Judge Kabir");
-  const [customD, setCustomD] = useState("Riya");
+  const [customP, setCustomP] = useState("");
+  const [customJ, setCustomJ] = useState("");
+  const [customD, setCustomD] = useState("");
 
   const handleCreate = () => {
     onCreateCustomCase(
-      customTitle || "Everyday Flatmate Dispute",
+      customTitle || "Everyday Friendship Dispute",
       customStakes || "Loser treats winner to dinner/coffee",
       customP || "Plaintiff",
       customD || "Defendant",
@@ -61,28 +61,82 @@ export default function LobbyTab({
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* 1. Direct Room Join & Role Switcher */}
+      {/* 1. Direct Room Join */}
       <View style={styles.card}>
         <Text style={styles.cardHeader}>1. JOIN COURTROOM ROOM</Text>
+        <Text style={styles.cardSubtext}>Enter the 4-digit room code from your friend:</Text>
         <View style={styles.joinRow}>
           <TextInput
             style={styles.roomInput}
             value={inputRoomId}
             onChangeText={setInputRoomId}
-            placeholder="Room #"
+            placeholder="e.g. 7104"
             placeholderTextColor="#94a3b8"
             keyboardType="number-pad"
+            maxLength={4}
           />
           <TouchableOpacity
-            style={styles.joinBtn}
+            style={[styles.joinBtn, !inputRoomId.trim() && styles.joinBtnDisabled]}
+            disabled={!inputRoomId.trim()}
             onPress={() => onJoinRoom(inputRoomId.trim())}
           >
             <Text style={styles.joinBtnText}>Join Room</Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Role Switcher */}
-        <Text style={[styles.cardHeader, { marginTop: 10 }]}>ACTIVE PLAYER ROLE</Text>
+      {/* 2. Custom Case Creator */}
+      <View style={styles.card}>
+        <Text style={styles.cardHeader}>2. FILE A NEW DISPUTE</Text>
+        <Text style={styles.cardSubtext}>Create a fresh courtroom case with custom stakes:</Text>
+        <TextInput
+          style={styles.textInput}
+          value={customTitle}
+          onChangeText={setCustomTitle}
+          placeholder="Dispute Title (e.g. Who left the AC on all day?)"
+          placeholderTextColor="#94a3b8"
+        />
+        <TextInput
+          style={styles.textInput}
+          value={customStakes}
+          onChangeText={setCustomStakes}
+          placeholder="Agreed Stakes / Penalty (e.g. Loser buys Starbucks)"
+          placeholderTextColor="#94a3b8"
+        />
+
+        <View style={styles.playersRow}>
+          <TextInput
+            style={[styles.playerInput, { borderColor: "#bfdbfe" }]}
+            value={customP}
+            onChangeText={setCustomP}
+            placeholder="Plaintiff Name"
+            placeholderTextColor="#94a3b8"
+          />
+          <TextInput
+            style={[styles.playerInput, { borderColor: "#fde68a" }]}
+            value={customJ}
+            onChangeText={setCustomJ}
+            placeholder="Judge Name"
+            placeholderTextColor="#94a3b8"
+          />
+          <TextInput
+            style={[styles.playerInput, { borderColor: "#fecdd3" }]}
+            value={customD}
+            onChangeText={setCustomD}
+            placeholder="Defendant Name"
+            placeholderTextColor="#94a3b8"
+          />
+        </View>
+
+        <TouchableOpacity style={styles.createBtn} onPress={handleCreate}>
+          <Text style={styles.createBtnText}>⚖️ File Dispute & Enter Lobby</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 3. Role Switcher */}
+      <View style={styles.card}>
+        <Text style={styles.cardHeader}>3. ACTIVE PLAYER ROLE</Text>
+        <Text style={styles.cardSubtext}>Switch your role in this courtroom:</Text>
         <View style={styles.roleGrid}>
           {["plaintiff", "defendant", "judge"].map((r) => {
             const isActive = currentRole === r;
@@ -103,9 +157,9 @@ export default function LobbyTab({
         </View>
       </View>
 
-      {/* 2. Dispute Presets */}
+      {/* 4. Dispute Presets */}
       <View style={styles.card}>
-        <Text style={styles.cardHeader}>2. POPULAR DISPUTE PRESETS</Text>
+        <Text style={styles.cardHeader}>4. SAMPLE DISPUTE PRESETS (QUICK DEMO)</Text>
         <View style={styles.presetsCol}>
           {PRESET_CASES.map((preset) => {
             const isCurrent = preset.id === currentRoomId;
@@ -130,53 +184,6 @@ export default function LobbyTab({
             );
           })}
         </View>
-      </View>
-
-      {/* 3. Custom Case Creator */}
-      <View style={styles.card}>
-        <Text style={styles.cardHeader}>3. FILE NEW CUSTOM CASE</Text>
-        <TextInput
-          style={styles.textInput}
-          value={customTitle}
-          onChangeText={setCustomTitle}
-          placeholder="Dispute Title (e.g. Who ate the ice cream?)"
-          placeholderTextColor="#94a3b8"
-        />
-        <TextInput
-          style={styles.textInput}
-          value={customStakes}
-          onChangeText={setCustomStakes}
-          placeholder="Agreed Stakes / Penalty (e.g. Loser buys Starbucks)"
-          placeholderTextColor="#94a3b8"
-        />
-
-        <View style={styles.playersRow}>
-          <TextInput
-            style={[styles.playerInput, { borderColor: "#bfdbfe" }]}
-            value={customP}
-            onChangeText={setCustomP}
-            placeholder="Plaintiff"
-            placeholderTextColor="#94a3b8"
-          />
-          <TextInput
-            style={[styles.playerInput, { borderColor: "#fde68a" }]}
-            value={customJ}
-            onChangeText={setCustomJ}
-            placeholder="Judge"
-            placeholderTextColor="#94a3b8"
-          />
-          <TextInput
-            style={[styles.playerInput, { borderColor: "#fecdd3" }]}
-            value={customD}
-            onChangeText={setCustomD}
-            placeholder="Defendant"
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
-
-        <TouchableOpacity style={styles.createBtn} onPress={handleCreate}>
-          <Text style={styles.createBtnText}>🚀 Summon Courtroom & Generate Code</Text>
-        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -203,6 +210,11 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#64748b",
     letterSpacing: 0.5,
+    marginBottom: 4
+  },
+  cardSubtext: {
+    fontSize: 11,
+    color: "#64748b",
     marginBottom: 8
   },
   joinRow: {
@@ -225,6 +237,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center"
+  },
+  joinBtnDisabled: {
+    backgroundColor: "#94a3b8"
   },
   joinBtnText: {
     color: "#ffffff",
