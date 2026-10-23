@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
   View,
+  Text,
+  TouchableOpacity,
   Alert,
   Share,
   StyleSheet,
@@ -10,7 +12,6 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
-import * as SplashScreen from "expo-splash-screen";
 import { ensureSignedIn } from "./src/firebaseConfig";
 import { saveCaseLocally, loadCaseLocally, exportCaseDossier } from "./src/localCaseService";
 import {
@@ -46,19 +47,42 @@ import VerdictTab from "./src/components/VerdictTab";
 import LobbyTab, { PRESET_CASES } from "./src/components/LobbyTab";
 import BottomTabBar from "./src/components/BottomTabBar";
 
-export default function App() {
-  useEffect(() => {
-    // Hide native splash screen immediately when React loads
-    SplashScreen.hideAsync().catch(() => {});
-    const timer = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {});
-    }, 400);
-    return () => clearTimeout(timer);
-  }, []);
+class ErrorBoundary extends React.Component {
+  state = { hasError: false, error: null };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error("Courtroom App Error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: "#0f172a", justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <Text style={{ color: "#fbbf24", fontSize: 24, fontWeight: "900", marginBottom: 12 }}>⚖️ POCKETCOURT</Text>
+          <Text style={{ color: "#ef4444", fontSize: 16, fontWeight: "700", marginBottom: 8, textAlign: "center" }}>Courtroom Recovery Mode</Text>
+          <Text style={{ color: "#94a3b8", fontSize: 11, textAlign: "center", marginBottom: 20 }}>
+            {String(this.state.error?.message || this.state.error || "An unexpected error occurred while loading docket.")}
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: "#2563eb", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={{ color: "#ffffff", fontWeight: "800", fontSize: 12 }}>Restart Courtroom Docket</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
+export default function App() {
   return (
     <SafeAreaProvider>
-      <CourtroomScreen />
+      <ErrorBoundary>
+        <CourtroomScreen />
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
@@ -103,9 +127,6 @@ function CourtroomScreen() {
   }));
 
   useEffect(() => {
-    // Ensure native splash screen is dismissed
-    SplashScreen.hideAsync().catch(() => {});
-
     // 1. Immediately hydrate case from on-device local storage
     loadCaseLocally(roomId).then((cached) => {
       if (cached) {

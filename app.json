@@ -31,14 +31,6 @@
     },
     "plugins": [
       [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#0f172a"
-        }
-      ],
-      [
         "expo-image-picker",
         {
           "photosPermission": "The app needs access to your photos to upload screenshot evidence to the Evidence Locker.",
