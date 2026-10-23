@@ -57,6 +57,18 @@ export async function createCourtroom(roomId, title, stakes, creatorRole, creato
       activeObjection: null,
       witnessPass: { active: false, name: "", expiresAt: 0 },
       participants: initialParticipants,
+      evidence: {
+        ex1: {
+          id: "ex1",
+          code: "Exhibit A",
+          submittedBy: "plaintiff",
+          submitterName: initialParticipants.plaintiff.name || "Aarav",
+          type: "Screenshot / Chat Log",
+          title: "Initial Proof Exhibit",
+          detail: "Documented proof and chat records submitted for case review.",
+          status: "pending"
+        }
+      },
       verdict: {
         isFinal: false,
         winner: "",

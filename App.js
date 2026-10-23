@@ -244,6 +244,7 @@ function CourtroomScreen() {
   };
 
   const handleSendMessage = (text) => {
+    if (!text?.trim() || verdict?.isFinal) return;
     sendCourtStatement(roomId, role, currentSpeakerName, text);
     setFallbackState((prev) => ({
       ...prev,
@@ -475,8 +476,14 @@ function CourtroomScreen() {
   };
 
   const handleCiteExhibit = (item) => {
+    if (verdict?.isFinal) {
+      Alert.alert("Case Sealed", "This case has been permanently sealed. No more arguments can be cited.");
+      return;
+    }
     setActiveTab("chat");
-    handleSendMessage(`Looking at ${item.code} (${item.title}), it clearly verifies my grievance!`);
+    const code = item.code || "Exhibit";
+    const title = item.title || "Documented Proof";
+    handleSendMessage(`Looking at ${code} (${title}), it clearly verifies my grievance!`);
   };
 
   const handleSealVerdict = (winner, reasoningText, penaltyText) => {
