@@ -20,9 +20,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: 🤖 Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: 🟢 Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -35,7 +32,10 @@ jobs:
       - name: ⚙️ Generate Android Native Project
         run: npx expo prebuild --platform android --clean
 
-      - name: 🔨 Compile Standalone Android APK with Gradle
+      - name: 🐘 Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 🔨 Compile Standalone Android APK
         run: |
           cd android
           chmod +x gradlew
