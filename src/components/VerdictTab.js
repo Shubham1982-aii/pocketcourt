@@ -18,7 +18,8 @@ export default function VerdictTab({
   defendantName,
   onSealVerdict,
   onMarkPenaltyFulfilled,
-  onCopyReceipt
+  onCopyReceipt,
+  onDownloadDossier
 }) {
   const isSealed = verdict?.isFinal;
   const isJudge = role === "judge";
@@ -216,10 +217,16 @@ export default function VerdictTab({
             <Text style={styles.signoffText}>Status: Final & Non-Appealable</Text>
           </View>
 
-          {/* Copy Receipt Button */}
-          <TouchableOpacity style={styles.receiptBtn} onPress={onCopyReceipt}>
-            <Text style={styles.receiptBtnText}>📋 Copy Formatted Verdict Receipt</Text>
-          </TouchableOpacity>
+          {/* Action Buttons: Export Dossier & Copy Receipt */}
+          <View style={styles.certActionsCol}>
+            <TouchableOpacity style={styles.downloadDossierBtn} onPress={onDownloadDossier}>
+              <Text style={styles.downloadDossierBtnText}>📥 Download / Export Case Dossier</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.receiptBtn} onPress={onCopyReceipt}>
+              <Text style={styles.receiptBtnText}>📋 Copy Formatted Verdict Receipt</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </ScrollView>
@@ -523,15 +530,33 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#64748b"
   },
+  certActionsCol: {
+    gap: 8,
+    marginTop: 4
+  },
+  downloadDossierBtn: {
+    backgroundColor: "#2563eb",
+    paddingVertical: 11,
+    borderRadius: 10,
+    alignItems: "center"
+  },
+  downloadDossierBtnText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.5
+  },
   receiptBtn: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: "#0f172a",
+    borderWidth: 1,
+    borderColor: "#334155",
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: "center"
   },
   receiptBtnText: {
-    color: "#0f172a",
+    color: "#f8fafc",
     fontSize: 11,
-    fontWeight: "900"
+    fontWeight: "800"
   }
 });

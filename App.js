@@ -11,9 +11,11 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { ensureSignedIn } from "./src/firebaseConfig";
+import { saveCaseLocally, loadCaseLocally, exportCaseDossier } from "./src/localCaseService";
 import {
   subscribeCourtroomAndPresence,
   createCourtroom,
+  claimCourtRole,
   setPlayerReady,
   commenceTrialFromLobby,
   sendCourtStatement,
@@ -56,6 +58,7 @@ function CourtroomScreen() {
   const [role, setRole] = useState("plaintiff"); // 'plaintiff' | 'defendant' | 'judge' | 'spectator'
   const [activeTab, setActiveTab] = useState("lobby"); // Opens cleanly on the Lobby Hub!
   const [room, setRoom] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [fallbackState, setFallbackState] = useState(() => ({
     title: "New Everyday Dispute",
@@ -90,14 +93,33 @@ function CourtroomScreen() {
   }));
 
   useEffect(() => {
+    // 1. Immediately hydrate case from on-device local storage
+    loadCaseLocally(roomId).then((cached) => {
+      if (cached) {
+        setFallbackState(cached);
+      }
+    });
+
     let unsubscribe = null;
     ensureSignedIn()
       .then((user) => {
-        unsubscribe = subscribeCourtroomAndPresence(roomId, role, user, (liveRoom) => {
-          if (liveRoom) {
-            setRoom(liveRoom);
+        setCurrentUser(user);
+        unsubscribe = subscribeCourtroomAndPresence(
+          roomId,
+          role,
+          user,
+          (liveRoom) => {
+            if (liveRoom) {
+              setRoom(liveRoom);
+              saveCaseLocally(roomId, liveRoom);
+            }
+          },
+          (restoredRole) => {
+            if (restoredRole && restoredRole !== role) {
+              setRole(restoredRole);
+            }
           }
-        });
+        );
       })
       .catch((err) => {
         console.warn("Using offline demo state mode:", err.message);
@@ -223,19 +245,80 @@ function CourtroomScreen() {
   const handleSendMessage = (text) => {
     if (!text?.trim() || verdict?.isFinal) return;
     sendCourtStatement(roomId, role, currentSpeakerName, text);
-    setFallbackState((prev) => ({
-      ...prev,
-      messages: [
-        ...prev.messages,
-        {
-          id: "m_" + Date.now(),
-          senderRole: role,
-          senderName: currentSpeakerName,
-          type: "statement",
-          text
+    setFallbackState((prev) => {
+      const updated = {
+        ...prev,
+        messages: [
+          ...prev.messages,
+          {
+            id: "m_" + Date.now(),
+            senderRole: role,
+            senderName: currentSpeakerName,
+            type: "statement",
+            text
+          }
+        ]
+      };
+      saveCaseLocally(roomId, updated);
+      return updated;
+    });
+  };
+
+  const handleSendVoiceNote = (base64Audio, duration) => {
+    if (verdict?.isFinal || !canSpeak) return;
+    sendCourtStatement(
+      roomId,
+      role,
+      currentSpeakerName,
+      "🎙️ Voice Note",
+      "voice_note",
+      base64Audio,
+      duration
+    );
+    setFallbackState((prev) => {
+      const updated = {
+        ...prev,
+        messages: [
+          ...prev.messages,
+          {
+            id: "m_vn_" + Date.now(),
+            senderRole: role,
+            senderName: currentSpeakerName,
+            type: "voice_note",
+            text: "🎙️ Voice Note",
+            audioBase64: base64Audio,
+            duration: duration
+          }
+        ]
+      };
+      saveCaseLocally(roomId, updated);
+      return updated;
+    });
+  };
+
+  const handleClaimRole = async (targetRole) => {
+    const res = await claimCourtRole(roomId, targetRole, currentSpeakerName, currentUser?.uid);
+    if (res && res.success === false) {
+      Alert.alert("Role Claim Blocked", res.reason || "Slot is already claimed by another participant.");
+      return;
+    }
+    setRole(targetRole);
+    setFallbackState((prev) => {
+      const updated = {
+        ...prev,
+        participants: {
+          ...prev.participants,
+          [targetRole]: {
+            ...prev.participants?.[targetRole],
+            uid: currentUser?.uid || "anon_" + targetRole,
+            name: currentSpeakerName,
+            online: true
+          }
         }
-      ]
-    }));
+      };
+      saveCaseLocally(roomId, updated);
+      return updated;
+    });
   };
 
   const handlePickProof = async () => {
@@ -517,6 +600,14 @@ function CourtroomScreen() {
     }
   };
 
+  const handleDownloadDossier = async () => {
+    try {
+      await exportCaseDossier(activeRoom);
+    } catch (err) {
+      Alert.alert("Export Error", "Could not export case dossier: " + err.message);
+    }
+  };
+
   // Lobby Handlers
   const handleToggleReady = (targetRole) => {
     const current = participants?.[targetRole]?.ready;
@@ -594,7 +685,8 @@ function CourtroomScreen() {
           stakes={activeRoom.stakes}
           role={role}
           participants={participants}
-          onClaimRole={(newRole) => setRole(newRole)}
+          currentUserUid={currentUser?.uid}
+          onClaimRole={handleClaimRole}
           onToggleReady={handleToggleReady}
           onCommenceTrial={handleCommenceTrial}
         />
@@ -653,6 +745,7 @@ function CourtroomScreen() {
                   isSealed={verdict?.isFinal}
                   currentSpeakerName={currentSpeakerName}
                   onSendMessage={handleSendMessage}
+                  onSendVoiceNote={handleSendVoiceNote}
                   onSetFloorSpeaker={(mode) => setMicFloorSpeaker(roomId, role, mode)}
                   onVoteCrowd={handleVoteCrowd}
                   onPickProof={handlePickProof}
@@ -702,6 +795,7 @@ function CourtroomScreen() {
                   onSealVerdict={handleSealVerdict}
                   onMarkPenaltyFulfilled={handleMarkPenaltyFulfilled}
                   onCopyReceipt={handleCopyReceipt}
+                  onDownloadDossier={handleDownloadDossier}
                 />
               </>
             )}

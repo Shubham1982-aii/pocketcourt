@@ -133,7 +133,7 @@ export async function commenceTrialFromLobby(roomId) {
 /**
  * 4. Join Courtroom + Mandatory Real-Time Presence Tracking (onDisconnect)
  */
-export function subscribeCourtroomAndPresence(roomId, role, user, onRoomUpdate) {
+export function subscribeCourtroomAndPresence(roomId, role, user, onRoomUpdate, onRoleRestored) {
   try {
     const connectedRef = ref(db, ".info/connected");
     const participantRef = ref(db, `rooms/${roomId}/participants/${role}`);
@@ -159,7 +159,20 @@ export function subscribeCourtroomAndPresence(roomId, role, user, onRoomUpdate) 
 
     const unsubRoom = onValue(roomRef, (snap) => {
       if (snap.exists()) {
-        onRoomUpdate(snap.val());
+        const roomData = snap.val();
+        onRoomUpdate(roomData);
+
+        // Auto-restore role if this user's UID is already bound to a slot
+        if (user?.uid && onRoleRestored) {
+          const parts = roomData.participants || {};
+          if (parts.judge?.uid === user.uid && role !== "judge") {
+            onRoleRestored("judge");
+          } else if (parts.plaintiff?.uid === user.uid && role !== "plaintiff") {
+            onRoleRestored("plaintiff");
+          } else if (parts.defendant?.uid === user.uid && role !== "defendant") {
+            onRoleRestored("defendant");
+          }
+        }
       } else {
         // Auto-seed fresh room in Firebase so all participants connect online immediately
         createCourtroom(
@@ -182,6 +195,24 @@ export function subscribeCourtroomAndPresence(roomId, role, user, onRoomUpdate) 
   } catch (error) {
     console.warn("subscribeCourtroomAndPresence failed:", error.message);
     return () => {};
+  }
+}
+
+/**
+ * 4d. Claim Role Slot (Enforces Single-Owner Identity)
+ */
+export async function claimCourtRole(roomId, targetRole, userName, uid) {
+  try {
+    const pRef = ref(db, `rooms/${roomId}/participants/${targetRole}`);
+    await update(pRef, {
+      uid: uid || "anon_" + targetRole,
+      name: userName || (targetRole === "judge" ? "Judge Kabir" : targetRole === "defendant" ? "Riya" : "Aarav"),
+      online: true
+    });
+    return { success: true };
+  } catch (err) {
+    console.warn("claimCourtRole error:", err.message);
+    return { success: false, error: err.message };
   }
 }
 
@@ -248,19 +279,24 @@ export async function setMicFloorSpeaker(roomId, userRole, speakerMode) {
 }
 
 /**
- * 7. Send Real-Time Statement
+ * 7. Send Real-Time Statement or Voice Note
  */
-export async function sendCourtStatement(roomId, senderRole, senderName, text, type = "statement") {
+export async function sendCourtStatement(roomId, senderRole, senderName, text, type = "statement", audioBase64 = null, duration = 0) {
   try {
     const safeSenderName = senderName || (senderRole === "judge" ? "Judge Kabir" : senderRole === "defendant" ? "Riya" : "Aarav");
     const messagesRef = ref(db, `rooms/${roomId}/messages`);
-    await push(messagesRef, {
+    const payload = {
       senderRole: senderRole || "plaintiff",
       senderName: safeSenderName,
       type: type || "statement",
       text: text || "",
       createdAt: serverTimestamp()
-    });
+    };
+    if (type === "voice_note" && audioBase64) {
+      payload.audioBase64 = audioBase64;
+      payload.duration = duration || 3000;
+    }
+    await push(messagesRef, payload);
   } catch (err) {
     console.warn("sendCourtStatement error:", err.message);
   }

@@ -13,6 +13,7 @@ export default function PreTrialLobby({
   stakes,
   role,
   participants,
+  currentUserUid,
   onClaimRole,
   onToggleReady,
   onCommenceTrial
@@ -29,6 +30,56 @@ export default function PreTrialLobby({
     try {
       await Share.share({ message: inviteText, title: "PocketCourt Invite" });
     } catch (e) {}
+  };
+
+  const renderSlotActions = (slotKey, slotData) => {
+    const isCurrent = role === slotKey;
+    const isOwnedByOther =
+      slotData.uid &&
+      currentUserUid &&
+      slotData.uid !== currentUserUid &&
+      slotData.name &&
+      !slotData.name.includes("Waiting");
+
+    return (
+      <View style={styles.slotActions}>
+        <TouchableOpacity
+          style={[
+            styles.readyBtn,
+            slotData.ready ? styles.readyBtnActive : styles.readyBtnIdle,
+            !isCurrent && styles.readyBtnDisabled
+          ]}
+          onPress={() => isCurrent && onToggleReady(slotKey)}
+          disabled={!isCurrent}
+        >
+          <Text
+            style={[
+              styles.readyBtnText,
+              slotData.ready ? styles.readyTextActive : styles.readyTextIdle
+            ]}
+          >
+            {slotData.ready ? "✓ Ready" : isCurrent ? "⏳ Tap if Ready" : "⏳ Waiting"}
+          </Text>
+        </TouchableOpacity>
+
+        {isCurrent ? (
+          <View style={styles.myRoleBadge}>
+            <Text style={styles.myRoleBadgeText}>YOU</Text>
+          </View>
+        ) : isOwnedByOther ? (
+          <View style={styles.lockedBadge}>
+            <Text style={styles.lockedBadgeText}>🔒 Taken</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.claimButton}
+            onPress={() => onClaimRole(slotKey)}
+          >
+            <Text style={styles.claimText}>✋ Claim</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
   };
 
   return (
@@ -60,21 +111,7 @@ export default function PreTrialLobby({
               <Text style={[styles.slotRole, { color: "#2563eb" }]}>Plaintiff</Text>
             </View>
           </View>
-          <View style={styles.slotActions}>
-            <TouchableOpacity
-              style={[styles.readyBtn, p.ready ? styles.readyBtnActive : styles.readyBtnIdle]}
-              onPress={() => onToggleReady("plaintiff")}
-            >
-              <Text style={[styles.readyBtnText, p.ready ? styles.readyTextActive : styles.readyTextIdle]}>
-                {p.ready ? "✓ Ready" : "⏳ Ready?"}
-              </Text>
-            </TouchableOpacity>
-            {role !== "plaintiff" && (
-              <TouchableOpacity onPress={() => onClaimRole("plaintiff")}>
-                <Text style={styles.claimText}>Claim</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {renderSlotActions("plaintiff", p)}
         </View>
 
         {/* Judge Slot */}
@@ -88,21 +125,7 @@ export default function PreTrialLobby({
               <Text style={[styles.slotRole, { color: "#b45309" }]}>Neutral Judge</Text>
             </View>
           </View>
-          <View style={styles.slotActions}>
-            <TouchableOpacity
-              style={[styles.readyBtn, j.ready ? styles.readyBtnActive : styles.readyBtnIdle]}
-              onPress={() => onToggleReady("judge")}
-            >
-              <Text style={[styles.readyBtnText, j.ready ? styles.readyTextActive : styles.readyTextIdle]}>
-                {j.ready ? "✓ Ready" : "⏳ Ready?"}
-              </Text>
-            </TouchableOpacity>
-            {role !== "judge" && (
-              <TouchableOpacity onPress={() => onClaimRole("judge")}>
-                <Text style={styles.claimText}>Claim</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {renderSlotActions("judge", j)}
         </View>
 
         {/* Defendant Slot */}
@@ -116,21 +139,7 @@ export default function PreTrialLobby({
               <Text style={[styles.slotRole, { color: "#dc2626" }]}>Defendant</Text>
             </View>
           </View>
-          <View style={styles.slotActions}>
-            <TouchableOpacity
-              style={[styles.readyBtn, d.ready ? styles.readyBtnActive : styles.readyBtnIdle]}
-              onPress={() => onToggleReady("defendant")}
-            >
-              <Text style={[styles.readyBtnText, d.ready ? styles.readyTextActive : styles.readyTextIdle]}>
-                {d.ready ? "✓ Ready" : "⏳ Ready?"}
-              </Text>
-            </TouchableOpacity>
-            {role !== "defendant" && (
-              <TouchableOpacity onPress={() => onClaimRole("defendant")}>
-                <Text style={styles.claimText}>Claim</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {renderSlotActions("defendant", d)}
         </View>
       </View>
 
@@ -297,6 +306,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(148, 163, 184, 0.1)",
     borderColor: "#475569"
   },
+  readyBtnDisabled: {
+    opacity: 0.5
+  },
   readyBtnText: {
     fontSize: 9,
     fontWeight: "800"
@@ -307,11 +319,40 @@ const styles = StyleSheet.create({
   readyTextIdle: {
     color: "#94a3b8"
   },
+  myRoleBadge: {
+    backgroundColor: "#166534",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  myRoleBadgeText: {
+    color: "#86efac",
+    fontSize: 9,
+    fontWeight: "900"
+  },
+  lockedBadge: {
+    backgroundColor: "#1e293b",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  lockedBadgeText: {
+    color: "#94a3b8",
+    fontSize: 9,
+    fontWeight: "700"
+  },
+  claimButton: {
+    backgroundColor: "rgba(37, 99, 235, 0.2)",
+    borderWidth: 1,
+    borderColor: "#3b82f6",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
   claimText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#60a5fa",
-    textDecorationLine: "underline"
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#60a5fa"
   },
   actionCard: {
     backgroundColor: "#0f172a",
