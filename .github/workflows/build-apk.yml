@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Standalone Android APK
 
 on:
   push:
@@ -35,15 +35,15 @@ jobs:
       - name: 🐘 Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: 🔨 Compile Standalone Android APK
+      - name: 🔨 Compile Standalone Release APK (Embedded JS Bundle)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease -x lint -x lintVitalRelease --no-daemon
 
       - name: 📤 Upload Installable APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PocketCourt-Android-APK
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: PocketCourt-Standalone-Release-APK
+          path: android/app/build/outputs/apk/release/*.apk
           retention-days: 14
