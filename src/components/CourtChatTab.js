@@ -8,7 +8,13 @@ import {
   Alert,
   StyleSheet
 } from "react-native";
-import { Audio } from "expo-av";
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  createAudioPlayer,
+  setAudioModeAsync
+} from "expo-audio";
 import * as FileSystem from "expo-file-system";
 import { saveAudioLocally } from "../localCaseService";
 
@@ -38,9 +44,9 @@ export default function CourtChatTab({
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [playingMsgId, setPlayingMsgId] = useState(null);
 
-  const recordingRef = useRef(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const playerRef = useRef(null);
   const timerRef = useRef(null);
-  const soundRef = useRef(null);
 
   const isJudge = role === "judge";
   const isLitigant = role === "plaintiff" || role === "defendant";
@@ -49,11 +55,11 @@ export default function CourtChatTab({
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(() => {});
-      }
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+      if (playerRef.current) {
+        try {
+          playerRef.current.pause();
+        } catch (e) {}
+        playerRef.current = null;
       }
     };
   }, []);
@@ -79,42 +85,18 @@ export default function CourtChatTab({
       return;
     }
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert("Microphone Permission", "PocketCourt needs microphone access to record courtroom voice notes.");
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true
       });
 
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync({
-        android: {
-          extension: ".m4a",
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 24000
-        },
-        ios: {
-          extension: ".m4a",
-          audioQuality: Audio.IOSAudioQuality.LOW,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 24000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false
-        },
-        web: {}
-      });
-
-      await recording.startAsync();
-      recordingRef.current = recording;
+      recorder.record();
       setIsRecording(true);
       setRecordSeconds(0);
 
@@ -123,26 +105,21 @@ export default function CourtChatTab({
       }, 1000);
     } catch (err) {
       console.warn("handleStartRecording error:", err.message);
-      Alert.alert("Recording Error", "Unable to initialize audio recorder: " + err.message);
+      Alert.alert("Recording Error", "Unable to start voice recording: " + err.message);
     }
   };
 
   const handleStopAndSendRecording = async () => {
-    if (!recordingRef.current) return;
     if (timerRef.current) clearInterval(timerRef.current);
-
     try {
-      const rec = recordingRef.current;
-      await rec.stopAndUnloadAsync();
-      const uri = rec.getURI();
-      const status = await rec.getStatusAsync();
-      const durationMillis = status.durationMillis || recordSeconds * 1000 || 3000;
+      await recorder.stop();
+      const uri = recorder.uri;
+      const durationMillis = Math.max(1000, recordSeconds * 1000);
 
       setIsRecording(false);
-      recordingRef.current = null;
       setRecordSeconds(0);
 
-      if (durationMillis < 600) {
+      if (durationMillis < 600 || !uri) {
         Alert.alert("Note too short", "Voice note was under 1 second and was discarded.");
         return;
       }
@@ -157,61 +134,55 @@ export default function CourtChatTab({
     } catch (err) {
       console.warn("handleStopAndSendRecording error:", err.message);
       setIsRecording(false);
-      recordingRef.current = null;
+      setRecordSeconds(0);
     }
   };
 
   const handleCancelRecording = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (recordingRef.current) {
-      try {
-        await recordingRef.current.stopAndUnloadAsync();
-      } catch (e) {}
-      recordingRef.current = null;
-    }
+    try {
+      await recorder.stop();
+    } catch (e) {}
     setIsRecording(false);
     setRecordSeconds(0);
   };
 
   const handleTogglePlayAudio = async (msgId, base64Audio) => {
     try {
-      if (playingMsgId === msgId && soundRef.current) {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
+      if (playingMsgId === msgId && playerRef.current) {
+        playerRef.current.pause();
+        playerRef.current = null;
         setPlayingMsgId(null);
         return;
       }
 
-      if (soundRef.current) {
-        await soundRef.current.stopAsync().catch(() => {});
-        await soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
+      if (playerRef.current) {
+        try {
+          playerRef.current.pause();
+        } catch (e) {}
+        playerRef.current = null;
       }
 
       const localUri = await saveAudioLocally(msgId, base64Audio);
       if (!localUri) return;
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true
+      await setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true
       });
 
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: localUri },
-        { shouldPlay: true }
-      );
-
-      soundRef.current = sound;
+      const player = createAudioPlayer(localUri);
+      playerRef.current = player;
       setPlayingMsgId(msgId);
 
-      sound.setOnPlaybackStatusUpdate((status) => {
+      player.addListener("playbackStatusUpdate", (status) => {
         if (status.didJustFinish) {
           setPlayingMsgId(null);
-          sound.unloadAsync().catch(() => {});
-          soundRef.current = null;
+          playerRef.current = null;
         }
       });
+
+      player.play();
     } catch (err) {
       console.warn("handleTogglePlayAudio error:", err.message);
       setPlayingMsgId(null);
